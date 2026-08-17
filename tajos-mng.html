@@ -235,6 +235,8 @@ tbody tr:last-child td{border-bottom:none;}
 @media(max-width:900px){#sidebar{transform:translateX(-100%);}#sidebar.open{transform:translateX(0);}#sidebar-overlay{display:block;opacity:0;pointer-events:none;transition:opacity .3s;}#sidebar-overlay.visible{opacity:1;pointer-events:all;}#main{margin-left:0;}.hamburger{display:block;}.grid-4{grid-template-columns:1fr 1fr;}.grid-3{grid-template-columns:1fr 1fr;}}
 @media(max-width:640px){#content{padding:14px;}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}.form-row{grid-template-columns:1fr;}}
 @media print{#loginScreen,#sidebar,#topbar,.btn,.hamburger{display:none!important;}#main{margin-left:0;}body{background:#fff;color:#000;}.card{border:1px solid #ccc;box-shadow:none;}}
+#arqueoPrintArea{display:none;}
+@media print{body.printing-arqueo #main,body.printing-arqueo .modal-overlay{display:none!important;}body.printing-arqueo #arqueoPrintArea{display:block!important;background:#fff;color:#000;}}
 </style>
 </head>
 <body>
@@ -418,7 +420,6 @@ tbody tr:last-child td{border-bottom:none;}
   <div class="section-header">
     <div><div class="section-title">CATÁLOGO</div><div class="section-sub">Servicios y productos</div></div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="openModal('modalNuevoProducto')">＋ Producto</button>
       <button class="btn btn-gold" onclick="openModal('modalNuevoServicio')">＋ Servicio</button>
     </div>
   </div>
@@ -426,8 +427,10 @@ tbody tr:last-child td{border-bottom:none;}
   <div id="catTabMetodos" style="display:none"></div>
   <div id="catTabServicios"><div class="grid-3" id="serviciosList"></div></div>
   <div id="catTabProductos" style="display:none">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-      <button class="btn btn-outline btn-sm" id="btnIngresoStock" style="display:none" onclick="openModal('modalIngresoProducto')">📦 Ingreso de Stock</button>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm cat-admin-btn" onclick="abrirModalEntradaStock()">📥 Registrar Entrada</button>
+      <button class="btn btn-outline btn-sm cat-admin-btn" onclick="abrirModalSalidaStock()">📤 Registrar Salida</button>
+      <button class="btn btn-gold btn-sm cat-admin-btn" onclick="openModal('modalNuevoProducto')">＋ Crear Artículo</button>
     </div>
     <div class="grid-3" id="productosList"></div>
   </div>
@@ -512,6 +515,7 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="tab active" onclick="switchReporteTab('resumen',this)">Resumen</div>
     <div class="tab" onclick="switchReporteTab('comisiones',this)">Comisiones</div>
     <div class="tab" onclick="switchReporteTab('servicios',this)">Por Servicio</div>
+    <div class="tab" onclick="switchReporteTab('flujo',this)">Flujo de Clientes</div>
   </div>
   <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
     <select class="form-control" id="reportePeriodo" style="width:160px" onchange="toggleReporteCustom();generarReporte()">
@@ -540,12 +544,56 @@ tbody tr:last-child td{border-bottom:none;}
   </div>
   <div id="reporteTabComisiones" style="display:none">
     <div class="card"><div class="card-title">💈 Comisiones por Barbero</div>
-      <div class="table-wrap"><table><thead><tr><th>Barbero</th><th>Servicios</th><th>Facturado</th><th>Comisión</th><th>Progreso</th></tr></thead><tbody id="rComisionesTbody"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Barbero</th><th>Servicios</th><th>Facturado</th><th>Com. Servicios</th><th>Com. Productos</th><th>Progreso</th></tr></thead><tbody id="rComisionesTbody"></tbody></table></div>
     </div>
   </div>
   <div id="reporteTabServicios" style="display:none">
     <div class="card"><div class="card-title">🗂 Servicios Más Populares</div>
       <div class="table-wrap"><table><thead><tr><th>Servicio</th><th>Cantidad</th><th>Total</th><th>% del Total</th></tr></thead><tbody id="rServiciosTbody"></tbody></table></div>
+    </div>
+  </div>
+  <div id="reporteTabFlujo" style="display:none">
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:4px">Tipo de filtro</label>
+        <select class="form-control" id="flujoTipo" style="width:130px" onchange="_flujoTipoChanged()">
+          <option value="diario">Diario</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensual" selected>Mensual</option>
+          <option value="anual">Anual</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:4px">Período</label>
+        <input type="date" class="form-control" id="flujoValorDiario" style="width:160px;display:none" onchange="generarFlujoClientes()">
+        <select class="form-control" id="flujoValorSemanal" style="width:230px;display:none" onchange="generarFlujoClientes()"></select>
+        <select class="form-control" id="flujoValorMensual" style="width:180px" onchange="generarFlujoClientes()"></select>
+        <select class="form-control" id="flujoValorAnual" style="width:110px;display:none" onchange="generarFlujoClientes()"></select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;color:var(--text-muted);margin-bottom:4px">Sucursal</label>
+        <div id="flujoSucursales" style="display:flex;gap:14px;align-items:center;height:38px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:.85rem;cursor:pointer"><input type="checkbox" id="flujoLocal1" checked onchange="generarFlujoClientes()"> Central</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:.85rem;cursor:pointer"><input type="checkbox" id="flujoLocal2" checked onchange="generarFlujoClientes()"> Superseis</label>
+        </div>
+      </div>
+    </div>
+    <div class="grid-4" style="margin-bottom:20px">
+      <div class="stat-card"><div class="stat-label">Turnos Agendados</div><div class="stat-value" id="fTotalAgendados">0</div><div class="stat-icon">📅</div></div>
+      <div class="stat-card"><div class="stat-label">Turnos de 30 min</div><div class="stat-value" id="fTurnos30">0</div><div class="stat-icon">⏱</div></div>
+      <div class="stat-card"><div class="stat-label">Turnos de 60 min</div><div class="stat-value" id="fTurnos60">0</div><div class="stat-icon">⏱</div></div>
+      <div class="stat-card"><div class="stat-label">Turnos Cancelados</div><div class="stat-value" id="fTurnosCancelados">0</div><div class="stat-icon">✖</div></div>
+    </div>
+    <div class="card" style="margin-bottom:20px"><div class="card-title">🕐 Horas Pico</div><div id="fHorasPico"></div></div>
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <span>👥 Top Clientes (20% · Pareto)</span>
+        <select class="form-control" id="flujoParetoOrden" style="width:200px" onchange="generarFlujoClientes()">
+          <option value="monto">Ordenar por monto gastado</option>
+          <option value="visitas">Ordenar por cantidad de visitas</option>
+        </select>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>Cliente</th><th>Visitas</th><th>Monto Total</th><th>Visitas/mes</th></tr></thead><tbody id="fTopClientesTbody"></tbody></table></div>
     </div>
   </div>
 </div>
@@ -810,14 +858,18 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-header"><div class="modal-title" id="modalProdTitulo">📦 Nuevo Producto</div><button class="modal-close" onclick="closeModal('modalNuevoProducto')">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="prodEditId">
-      <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-control" id="prodNombre"></div>
+      <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-control" id="prodNombre" oninput="actualizarCodigoProducto()"></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Precio *</label><input type="number" class="form-control" id="prodPrecio" min="0"></div>
         <div class="form-group"><label class="form-label">Stock Inicial</label><input type="number" class="form-control" id="prodStock" value="0" min="0"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Categoría</label><select class="form-control" id="prodCategoria"></select></div>
+        <div class="form-group"><label class="form-label">Categoría</label><select class="form-control" id="prodCategoria" onchange="actualizarCodigoProducto()"></select></div>
+        <div class="form-group"><label class="form-label">Marca</label><input type="text" class="form-control" id="prodMarca"></div>
+      </div>
+      <div class="form-row">
         <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-control" id="prodDesc"></div>
+        <div class="form-group"><label class="form-label">Código</label><input type="text" class="form-control" id="prodCodigo" readonly style="opacity:.7" placeholder="Se genera automáticamente"></div>
       </div>
       <div class="form-group" style="margin-top:4px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
@@ -829,19 +881,47 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalNuevoProducto')">Cancelar</button><button class="btn btn-gold" onclick="guardarProducto()">Guardar</button></div>
   </div>
 </div>
-<!-- INGRESO STOCK -->
-<div class="modal-overlay" id="modalIngresoProducto" onclick="closeModalOutside(event,'modalIngresoProducto')">
+<!-- ENTRADA DE STOCK -->
+<div class="modal-overlay" id="modalEntradaStock" onclick="closeModalOutside(event,'modalEntradaStock')">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">📦 Ingreso de Stock</div><button class="modal-close" onclick="closeModal('modalIngresoProducto')">✕</button></div>
+    <div class="modal-header"><div class="modal-title">📥 Registrar Entrada de Stock</div><button class="modal-close" onclick="closeModal('modalEntradaStock')">✕</button></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">Producto *</label><select class="form-control" id="stockProductoSel" onchange="updateStockActual()"></select></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Cantidad a ingresar *</label><input type="number" class="form-control" id="stockCantidad" min="1" value="1"></div>
-        <div class="form-group"><label class="form-label">Stock actual</label><input type="text" class="form-control" id="stockActual" readonly style="opacity:.6"></div>
+      <div class="form-group"><label class="form-label">Código / Nombre *</label>
+        <input type="text" class="form-control" id="entBuscar" list="dlEntProductos" placeholder="Buscar por código o nombre..." oninput="resolverProductoStock('ent')">
+        <datalist id="dlEntProductos"></datalist>
+        <input type="hidden" id="entProductoId">
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px" id="entStockActual"></div>
       </div>
-      <div class="form-group"><label class="form-label">Notas / Proveedor</label><input type="text" class="form-control" id="stockNotas" placeholder="Opcional..."></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cantidad *</label><input type="number" class="form-control" id="entCantidad" min="1" value="1"></div>
+        <div class="form-group"><label class="form-label">Sucursal *</label><select class="form-control" id="entSucursal" onchange="resolverProductoStock('ent')"><option value="1">Central</option><option value="2">Superseis</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Factura asociada</label><input type="text" class="form-control" id="entFactura" placeholder="N° de factura (opcional)"></div>
+        <div class="form-group"><label class="form-label">Costo</label><input type="number" class="form-control" id="entCosto" min="0" placeholder="Opcional"></div>
+      </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalIngresoProducto')">Cancelar</button><button class="btn btn-gold" onclick="ingresarStock()">Registrar Ingreso</button></div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalEntradaStock')">Cancelar</button><button class="btn btn-gold" onclick="registrarEntradaStock()">Registrar Entrada</button></div>
+  </div>
+</div>
+<!-- SALIDA DE STOCK -->
+<div class="modal-overlay" id="modalSalidaStock" onclick="closeModalOutside(event,'modalSalidaStock')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">📤 Registrar Salida de Stock</div><button class="modal-close" onclick="closeModal('modalSalidaStock')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Código / Nombre *</label>
+        <input type="text" class="form-control" id="salBuscar" list="dlSalProductos" placeholder="Buscar por código o nombre..." oninput="resolverProductoStock('sal')">
+        <datalist id="dlSalProductos"></datalist>
+        <input type="hidden" id="salProductoId">
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px" id="salStockActual"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cantidad *</label><input type="number" class="form-control" id="salCantidad" min="1" value="1"></div>
+        <div class="form-group"><label class="form-label">Sucursal *</label><select class="form-control" id="salSucursal" onchange="resolverProductoStock('sal')"><option value="1">Central</option><option value="2">Superseis</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Concepto / Motivo</label><input type="text" class="form-control" id="salConcepto" placeholder="Caducidad, canje, avería, etc. (opcional)"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalSalidaStock')">Cancelar</button><button class="btn btn-gold" onclick="registrarSalidaStock()">Registrar Salida</button></div>
   </div>
 </div>
 <!-- DETALLE COBRO -->
@@ -915,6 +995,14 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="modal-header"><div class="modal-title">🏦 Arqueo / Cierre de Caja</div><button class="modal-close" onclick="closeModal('modalArqueo')">✕</button></div>
     <div class="modal-body" id="arqueoContent"></div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modalArqueo')">Cerrar</button><button class="btn btn-gold" onclick="guardarArqueo()">Guardar Arqueo</button></div>
+  </div>
+</div>
+<!-- ARQUEO — VISUALIZAR (admin, solo lectura) -->
+<div class="modal-overlay" id="modalArqueoVer" onclick="closeModalOutside(event,'modalArqueoVer')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">🔍 Detalle de Arqueo</div><button class="modal-close" onclick="closeModal('modalArqueoVer')">✕</button></div>
+    <div class="modal-body" id="arqueoVerContent"></div>
+    <div class="modal-footer" id="arqueoVerFooter"><button class="btn btn-ghost" onclick="closeModal('modalArqueoVer')">Cerrar</button></div>
   </div>
 </div>
 <!-- BACKUP -->
@@ -1028,8 +1116,8 @@ tbody tr:last-child td{border-bottom:none;}
 
 // ══════════════════════════════════════════════════════════════
 // [1] CONFIG & SUPABASE
-const SUPA_URL='https://tgwhegmgchnttsmrhcfc.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnd2hlZ21nY2hudHRzbXJoY2ZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4ODg1ODgsImV4cCI6MjA4OTQ2NDU4OH0.3g20p6yGber_j6HNB5oQqesOm_YgQ_fo9P2Yl2jGPbM';
+const SUPA_URL='https://sistematajos.duckdns.org';
+const SUPA_KEY='sb_publishable_5SeTVAtyoLryOA7oBW3blv_fEdvR0gW';
 
 // ══════════════════════════════════════════════════════════════
 // MAPA: nombre de store (IndexedDB) → nombre de tabla (Supabase)
@@ -1079,6 +1167,8 @@ const FIELD_TO_DB = {
   verificadoAt:'verificado_at',
   egresosEfectivo:'egresos_efectivo',
   efectivoEntregado:'efectivo_entregado',
+  totalEfectivo:'total_efectivo',
+  efectivoEsperado:'efectivo_esperado',
   // Caja turnos
   cajaInicialConfirmada:'caja_inicial_confirmada',
   horaInicio:'hora_inicio',
@@ -1091,12 +1181,13 @@ const SUPA_COLS={
   barberos:new Set(['id','nombre','apellido','fecha_ingreso','local','comision','celular','email','activo','created_at','updated_at']),
   barbero_users:new Set(['id','barbero_id','login','pin','activo','ultimo_acceso','created_at']),
   clientes:new Set(['id','nombre','apellido','documento','celular','email','notas','created_at','updated_at']),
+  clientes_reviewed:new Set(['id','cliente_id','nombre','apellido','numero','fecha_envio','created_at']),
   servicios:new Set(['id','nombre','precio','duracion','categoria','descripcion','comision','activo','created_at','updated_at']),
-  productos:new Set(['id','nombre','precio','stock','categoria','descripcion','comisionable','activo','created_at','updated_at']),
-  turnos:new Set(['id','cliente_id','cliente_nombre','barbero_id','fecha','hora','local','servicios','notas','estado','creado','created_at','updated_at']),
+  productos:new Set(['id','nombre','precio','stock','categoria','marca','codigo','descripcion','comisionable','activo','created_at','updated_at']),
+  turnos:new Set(['id','cliente_id','cliente_nombre','barbero_id','fecha','hora','local','servicios','notas','estado','created_at','updated_at']),
   usuarios:new Set(['id','login','password','nombre','apellido','email','rol','estado','acceso','ultimo_acceso','created_at','updated_at']),
   historial:new Set(['id','usuario','nombre','rol','accion','fecha','hora','ts']),
-  arqueos:new Set(['id','fecha','local','turno','turno_label','cajero','caja_inicial','detalle','total','nota','notas','verificado','verificado_por','verificado_at','egresos_efectivo','efectivo_entregado','cerrado','created_at']),
+  arqueos:new Set(['id','fecha','local','turno','turno_label','cajero','caja_inicial','detalle','total','nota','notas','verificado','verificado_por','verificado_at','egresos_efectivo','efectivo_entregado','total_efectivo','efectivo_esperado','cerrado','created_at']),
   caja_turnos:new Set(['id','fecha','local','turno','turno_label','cajero','caja_inicial','caja_inicial_confirmada','egresos_efectivo','hora_inicio','hora_cierre','created_at','updated_at']),
   bloqueos_agenda:new Set(['id','local','barbero_id','fecha','desde','hasta','motivo','registrado_por','created_at']),
   adelantos:new Set(['id','barbero_id','barbero_nombre','monto_solicitado','monto_aprobado','estado','fecha_solicitud','nota_solicitud','nota_admin','fecha_aprobacion','ts']),
@@ -1199,7 +1290,12 @@ async function syncPending(){
     }catch(e){remaining.push(op);}
   }
   savePending(remaining);
-  if(ops.length>remaining.length)toast(`☁ ${ops.length-remaining.length} operaciones sincronizadas con Supabase`,'info');
+  if(ops.length>remaining.length){
+    // Invalidar cachés de los stores afectados para no servir datos desactualizados
+    const touched=new Set(ops.filter(op=>!remaining.includes(op)).map(op=>op.store));
+    touched.forEach(invalidateCache);
+    toast(`☁ ${ops.length-remaining.length} operaciones sincronizadas con Supabase`,'info');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1228,14 +1324,14 @@ async function supaFetch(method,table,query,body,extraHeaders={}){
 // INDEXEDDB (CACHÉ LOCAL / FALLBACK OFFLINE)
 // ══════════════════════════════════════════════════════════════
 let db;
-const DB_NAME='TajosOS',DB_VER=7;
+const DB_NAME='TajosOS',DB_VER=8;
 function initDB(){
   return new Promise((res,rej)=>{
     const r=indexedDB.open(DB_NAME,DB_VER);
     r.onupgradeneeded=e=>{
       const d=e.target.result;
       ['barberos','clientes','servicios','productos','turnos','cobros','usuarios','historial','arqueos',
-       'cajaTurnos','barberoUsers','adelantos','egresos','giftcards','categoriasServ','categoriasProd','bloqueosAgenda','metodosPago']
+       'cajaTurnos','barberoUsers','adelantos','egresos','giftcards','categoriasServ','categoriasProd','bloqueosAgenda','metodosPago','clientesReviewed']
         .forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});});
     };
     r.onsuccess=e=>{db=e.target.result;res(db);};
@@ -1261,39 +1357,76 @@ async function _idbReplaceAll(store, rows){
 }
 
 // ══════════════════════════════════════════════════════════════
+// CACHÉ DE TABLAS — evita descargar de nuevo (Egress) datos que
+// ya se pidieron hace poco. Se invalida automáticamente en cada
+// escritura (dbAdd/dbPut/dbDel/syncPending) sobre el mismo store,
+// por lo que la app siempre ve datos consistentes con lo escrito.
+// ══════════════════════════════════════════════════════════════
+const _TABLE_CACHE={};     // store -> {data, ts}
+const _TABLE_INFLIGHT={};  // store -> Promise en curso (dedup de llamadas concurrentes)
+const _CACHE_TTL={
+  // catálogos / tablas de baja frecuencia de cambio → cache larga
+  barberos:300000, servicios:300000, productos:300000, metodosPago:300000,
+  categoriasServ:300000, categoriasProd:300000, barberoUsers:180000,
+  clientes:120000, usuarios:120000, bloqueosAgenda:60000,
+  // tablas operativas / de alta frecuencia → cache corta (solo evita refetch inmediato duplicado)
+  cobros:20000, turnos:20000, historial:20000, arqueos:20000,
+  cajaTurnos:20000, adelantos:20000, egresos:20000, giftcards:30000,
+};
+function _cacheTTL(store){return _CACHE_TTL[store]!=null?_CACHE_TTL[store]:15000;}
+function invalidateCache(store){delete _TABLE_CACHE[store];}
+
+// Columnas explícitas a pedir a Supabase (evita `select=*`).
+// Usa el mismo allow-list SUPA_COLS ya definido para escrituras.
+function _selectCols(tbl){
+  const cols=SUPA_COLS[tbl];
+  return cols?Array.from(cols).join(','):'*';
+}
+
+// ══════════════════════════════════════════════════════════════
 // CAPA HÍBRIDA — API pública (reemplaza dbAll/dbGet/dbAdd/dbPut/dbDel)
 // Prioridad: Supabase → si falla o está offline → IndexedDB
 // ══════════════════════════════════════════════════════════════
 
 async function dbAll(store){
   const tbl=STORE_TABLE[store]||store;
-  if(_online){
-    try{
-      const PAGE=1000;
-      let all=[];
-      let offset=0;
-      while(true){
-        const from=offset;
-        const to=offset+PAGE-1;
-        const rows=await supaFetch('GET',tbl,'select=*&order=id.asc',null,{'Range':`${from}-${to}`,'Range-Unit':'items'});
-        if(!rows||rows.length===0) break;
-        all=all.concat(rows);
-        if(rows.length<PAGE) break;
-        offset+=PAGE;
-      }
-      const mapped=all.map(fromDbObj);
-      await _idbReplaceAll(store,mapped);
-      return mapped;
-    }catch(e){console.warn('dbAll Supabase error, usando IndexedDB:',e);}
-  }
-  return _idbAll(store);
+  const cached=_TABLE_CACHE[store];
+  if(cached&&(Date.now()-cached.ts)<_cacheTTL(store)) return cached.data;
+  if(_TABLE_INFLIGHT[store]) return _TABLE_INFLIGHT[store];
+  const p=(async()=>{
+    if(_online){
+      try{
+        const PAGE=1000;
+        let all=[];
+        let offset=0;
+        const cols=_selectCols(tbl);
+        while(true){
+          const from=offset;
+          const to=offset+PAGE-1;
+          const rows=await supaFetch('GET',tbl,`select=${cols}&order=id.asc`,null,{'Range':`${from}-${to}`,'Range-Unit':'items'});
+          if(!rows||rows.length===0) break;
+          all=all.concat(rows);
+          if(rows.length<PAGE) break;
+          offset+=PAGE;
+        }
+        const mapped=all.map(fromDbObj);
+        await _idbReplaceAll(store,mapped);
+        _TABLE_CACHE[store]={data:mapped,ts:Date.now()};
+        return mapped;
+      }catch(e){console.warn('dbAll Supabase error, usando IndexedDB:',e);}
+    }
+    return _idbAll(store);
+  })();
+  _TABLE_INFLIGHT[store]=p;
+  try{ return await p; } finally { delete _TABLE_INFLIGHT[store]; }
 }
 
 async function dbGet(store,id){
   const tbl=STORE_TABLE[store]||store;
   if(_online){
     try{
-      const rows=await supaFetch('GET',tbl,`id=eq.${id}&select=*`);
+      const cols=_selectCols(tbl);
+      const rows=await supaFetch('GET',tbl,`id=eq.${id}&select=${cols}`);
       if(rows&&rows.length){
         const item=fromDbObj(rows[0]);
         _idbPut(store,item).catch(()=>{});
@@ -1311,6 +1444,7 @@ async function dbAdd(store,data){
   if(_online){
     try{
       const rows=await supaFetch('POST',tbl,null,body);
+      invalidateCache(store);
       if(rows&&rows.length){
         const saved=fromDbObj(rows[0]);
         await _idbAdd(store,saved);
@@ -1319,11 +1453,14 @@ async function dbAdd(store,data){
       // Supabase devolvió vacío — puede ser RLS sin política SELECT,
       // o Prefer:return=representation ignorado. El registro SÍ se insertó
       // (no hubo error HTTP). Guardamos en cache local y continuamos.
-      const localId=await _idbAdd(store,{...data});
+      const localId=data.id!=null?data.id:Date.now();
+      await _idbAdd(store,{...data,id:localId});
       return localId;
     }catch(e){console.warn('dbAdd Supabase error, guardando offline:',e);}
   }
-  const localId=await _idbAdd(store,{...data});
+  const localId=data.id!=null?data.id:Date.now();
+  await _idbAdd(store,{...data,id:localId});
+  invalidateCache(store);
   addPending({type:'insert',store,data:{...data,id:localId}});
   return localId;
 }
@@ -1335,11 +1472,13 @@ async function dbPut(store,data){
   if(_online){
     try{
       await supaFetch('PATCH',tbl,`id=eq.${data.id}`,body);
+      invalidateCache(store);
       _idbPut(store,data).catch(()=>{});
       return;
     }catch(e){console.warn('dbPut Supabase error, guardando offline:',e);}
   }
   await _idbPut(store,data);
+  invalidateCache(store);
   addPending({type:'upsert',store,data});
 }
 
@@ -1348,11 +1487,13 @@ async function dbDel(store,id){
   if(_online){
     try{
       await supaFetch('DELETE',tbl,`id=eq.${id}`);
+      invalidateCache(store);
       _idbDel(store,id).catch(()=>{});
       return;
     }catch(e){console.warn('dbDel Supabase error, borrando offline:',e);}
   }
   await _idbDel(store,id);
+  invalidateCache(store);
   addPending({type:'delete',store,id});
 }
 
@@ -1423,7 +1564,7 @@ async function cargarMetodos(){
     }
   }catch(e){console.warn('cargarMetodos fallback:',e);}
 }
-const STORES=['barberos','clientes','servicios','productos','turnos','cobros','usuarios','historial','arqueos','cajaTurnos','barberoUsers','adelantos','egresos','giftcards','categoriasServ','categoriasProd','bloqueosAgenda'];
+const STORES=['barberos','clientes','servicios','productos','turnos','cobros','usuarios','historial','arqueos','cajaTurnos','barberoUsers','adelantos','egresos','giftcards','categoriasServ','categoriasProd','bloqueosAgenda','clientesReviewed'];
 const fmt=n=>'Gs. '+(n||0).toLocaleString('es-PY',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fmtD=d=>{if(!d)return '';return new Date(d+'T00:00:00').toLocaleDateString('es-PY',{day:'2-digit',month:'2-digit',year:'numeric'});};
 const toDS=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${dd}`;};
@@ -1488,8 +1629,6 @@ async function showApp(){
     if(el.classList.contains('nav-item')){el.style.display=isAdmin?'none':'flex';}
     else{el.style.display=isAdmin?'none':'';}
   });
-  const btnStock=document.getElementById('btnIngresoStock');
-  if(btnStock)btnStock.style.display=isAdmin?'inline-flex':'none';
   // Aplicar restricción de acceso a sucursales para cajeros
   if(!isAdmin&&u.acceso){
     const acc=u.acceso;
@@ -1624,7 +1763,7 @@ function navigate(page){
   if(page==='usuarios')renderUsuarios();
   if(page==='historial')renderHistorial();
   if(page==='arqueos')renderArqueosAdmin();
-  if(page==='reportes'){_aplicarRestriccionReporteLocal();generarReporte();}
+  if(page==='reportes'){_aplicarRestriccionReporteLocal();_initFlujoSelectores();generarReporte();}
   if(page==='giftcards')renderGiftcards();
   if(page==='consumos'){
     const fd=document.getElementById('consFiltroFecha');
@@ -1682,7 +1821,6 @@ function openModal(id,extra){
     document.getElementById('perfilPassword').value='';
   }
   if(id==='modalArqueo')renderArqueo();
-  if(id==='modalIngresoProducto')populateStockSel();
   if(id==='modalNuevaCategoria'){
     const tipo=extra||'serv';
     const hidEl=document.getElementById('catTipo');if(hidEl)hidEl.value=tipo;
@@ -1733,7 +1871,7 @@ function openModal(id,extra){
   }
   if(id==='modalNuevoProducto'){
     if(!document.getElementById('prodEditId').value){
-      ['prodNombre','prodPrecio','prodDesc'].forEach(f=>document.getElementById(f).value='');
+      ['prodNombre','prodPrecio','prodDesc','prodMarca','prodCodigo'].forEach(f=>document.getElementById(f).value='');
       document.getElementById('prodStock').value='0';
       const cbC=document.getElementById('prodComisionable');if(cbC)cbC.checked=false;
       document.getElementById('modalProdTitulo').textContent='📦 Nuevo Producto';
@@ -2003,10 +2141,27 @@ async function eliminarServicio(id){
   await dbDel('servicios',id);await logAct(`Eliminó servicio: ${s.nombre}`);toast('Eliminado','info');renderCatalogo();populateSels();
 }
 
+// Genera un código intuitivo tipo CATEGORÍA-NOMBRE-### (ej. B-G-001 para Bebida/Gaseosa),
+// incrementando el secuencial dentro de ese mismo prefijo.
+function _letraCod(s){return (s||'').trim().charAt(0).toUpperCase()||'X';}
+async function actualizarCodigoProducto(){
+  if(document.getElementById('prodEditId').value)return; // el código no se regenera al editar
+  const nombre=document.getElementById('prodNombre').value;
+  const categoria=document.getElementById('prodCategoria')?.value||'';
+  const codEl=document.getElementById('prodCodigo');
+  if(!nombre||!categoria){codEl.value='';return;}
+  const prefijo=`${_letraCod(categoria)}-${_letraCod(nombre)}`;
+  const prods=await dbAll('productos');
+  const nums=prods.filter(p=>typeof p.codigo==='string'&&p.codigo.startsWith(prefijo+'-'))
+    .map(p=>parseInt(p.codigo.split('-')[2],10)).filter(n=>!isNaN(n));
+  const next=(nums.length?Math.max(...nums):0)+1;
+  codEl.value=`${prefijo}-${String(next).padStart(3,'0')}`;
+}
+
 async function guardarProducto(){
   const id=document.getElementById('prodEditId').value;
   const _stockVal=+document.getElementById('prodStock').value||0;
-  const data={nombre:document.getElementById('prodNombre').value.trim(),precio:+document.getElementById('prodPrecio').value||0,categoria:document.getElementById('prodCategoria')?.value||'',descripcion:document.getElementById('prodDesc').value.trim(),comisionable:document.getElementById('prodComisionable')?.checked||false};
+  const data={nombre:document.getElementById('prodNombre').value.trim(),precio:+document.getElementById('prodPrecio').value||0,categoria:document.getElementById('prodCategoria')?.value||'',marca:document.getElementById('prodMarca').value.trim(),descripcion:document.getElementById('prodDesc').value.trim(),codigo:document.getElementById('prodCodigo').value.trim(),comisionable:document.getElementById('prodComisionable')?.checked||false};
   if(!data.nombre)return toast('El nombre es requerido','error');
   if(id){
     // Editar: preservar stock de otras sucursales, solo actualizar la activa
@@ -2021,7 +2176,7 @@ async function guardarProducto(){
     [1,2].forEach(s=>data.stock[String(s)]=0);
     data.stock[String(ST.localActivo)]=_stockVal;
     await dbAdd('productos',data);
-    await logAct(`Creó producto: ${data.nombre}`);toast('Producto creado','success');
+    await logAct(`Creó producto: ${data.nombre} (${data.codigo||'s/cód.'})`);toast('Producto creado','success');
   }
   closeModal('modalNuevoProducto');document.getElementById('prodEditId').value='';renderCatalogo();populateSels();
 }
@@ -2031,6 +2186,7 @@ async function editarProducto(id){
   document.getElementById('prodEditId').value=id;document.getElementById('prodNombre').value=p.nombre;
   document.getElementById('prodPrecio').value=p.precio;document.getElementById('prodStock').value=getStockLocal(p);
   document.getElementById('prodDesc').value=p.descripcion||'';
+  document.getElementById('prodMarca').value=p.marca||'';document.getElementById('prodCodigo').value=p.codigo||'';
   ST._pendingProdCat=p.categoria||'';
   const cbComis=document.getElementById('prodComisionable');if(cbComis)cbComis.checked=!!p.comisionable;
   document.getElementById('modalProdTitulo').textContent='&#128230; Editar Producto';openModal('modalNuevoProducto');
@@ -2041,29 +2197,71 @@ async function eliminarProducto(id){
   await dbDel('productos',id);await logAct(`Eliminó producto: ${p.nombre}`);toast('Eliminado','info');renderCatalogo();populateSels();
 }
 
-async function populateStockSel(){
+// Buscador compartido código/nombre para los modales de Entrada y Salida de stock.
+async function _poblarBuscadorStock(prefijo){
   const prods=await dbAll('productos');
-  const sel=document.getElementById('stockProductoSel');
-  sel.innerHTML=prods.map(p=>{const _sl=getStockLocal(p);return`<option value="${p.id}" data-stock="${_sl}">${p.nombre} (${localNombre(ST.localActivo)}: ${_sl} · Total: ${stockTotal(p)})</option>`;}).join('');
-  updateStockActual();
+  const dl=document.getElementById(prefijo==='ent'?'dlEntProductos':'dlSalProductos');
+  dl.innerHTML=prods.map(p=>`<option value="${(p.codigo?p.codigo+' — ':'')}${p.nombre}">`).join('');
+  return prods;
 }
-function updateStockActual(){
-  const sel=document.getElementById('stockProductoSel');
-  const opt=sel.options[sel.selectedIndex];
-  document.getElementById('stockActual').value=opt?opt.dataset.stock:'0';
+async function resolverProductoStock(prefijo){
+  const val=document.getElementById(`${prefijo}Buscar`).value.trim();
+  const prods=await dbAll('productos');
+  const match=prods.find(p=>`${p.codigo?p.codigo+' — ':''}${p.nombre}`===val);
+  document.getElementById(`${prefijo}ProductoId`).value=match?match.id:'';
+  const stkEl=document.getElementById(`${prefijo}StockActual`);
+  if(match){
+    const suc=document.getElementById(`${prefijo}Sucursal`).value;
+    stkEl.textContent=`Stock actual: ${getStockLocal(match,suc)} u. en ${localNombre(suc)} · Total: ${stockTotal(match)} u.`;
+  }else stkEl.textContent='';
 }
-async function ingresarStock(){
-  const prodId=+document.getElementById('stockProductoSel').value;
-  const cant=+document.getElementById('stockCantidad').value||0;
-  const notas=document.getElementById('stockNotas').value.trim();
-  if(!prodId||cant<=0)return toast('Selecciona producto y cantidad válida','error');
-  const p=await dbGet('productos',prodId);
-  const _ant=getStockLocal(p);
-  setStockLocal(p,_ant+cant);
+
+async function abrirModalEntradaStock(){
+  document.getElementById('entBuscar').value='';document.getElementById('entProductoId').value='';
+  document.getElementById('entCantidad').value=1;document.getElementById('entFactura').value='';document.getElementById('entCosto').value='';
+  document.getElementById('entSucursal').value=ST.localActivo;
+  document.getElementById('entStockActual').textContent='';
+  await _poblarBuscadorStock('ent');
+  openModal('modalEntradaStock');
+}
+async function abrirModalSalidaStock(){
+  document.getElementById('salBuscar').value='';document.getElementById('salProductoId').value='';
+  document.getElementById('salCantidad').value=1;document.getElementById('salConcepto').value='';
+  document.getElementById('salSucursal').value=ST.localActivo;
+  document.getElementById('salStockActual').textContent='';
+  await _poblarBuscadorStock('sal');
+  openModal('modalSalidaStock');
+}
+
+async function registrarEntradaStock(){
+  const prodId=+document.getElementById('entProductoId').value;
+  const cant=+document.getElementById('entCantidad').value||0;
+  const suc=document.getElementById('entSucursal').value;
+  const factura=document.getElementById('entFactura').value.trim();
+  const costo=+document.getElementById('entCosto').value||0;
+  if(!prodId||cant<=0)return toast('Selecciona un producto válido de la lista y una cantidad','error');
+  const p=await dbGet('productos',prodId);if(!p)return toast('Producto no encontrado','error');
+  const _ant=getStockLocal(p,suc);
+  setStockLocal(p,_ant+cant,suc);
   await dbPut('productos',p);
-  await logAct(`Ingresó ${cant} u. de "${p.nombre}" en ${localNombre(ST.localActivo)}${notas?' ('+notas+')':''}`);
-  toast(`Stock de "${p.nombre}" (${localNombre(ST.localActivo)}) → ${_ant+cant} u.`,'success');
-  closeModal('modalIngresoProducto');renderCatalogo();populateSels();
+  await logAct(`Entrada de stock: ${cant} u. de "${p.nombre}" (${p.codigo||'s/cód.'}) en ${localNombre(suc)}${factura?' · Factura: '+factura:''}${costo?' · Costo: '+fmt(costo):''}`);
+  toast(`Stock de "${p.nombre}" (${localNombre(suc)}) → ${_ant+cant} u.`,'success');
+  closeModal('modalEntradaStock');renderCatalogo();populateSels();
+}
+async function registrarSalidaStock(){
+  const prodId=+document.getElementById('salProductoId').value;
+  const cant=+document.getElementById('salCantidad').value||0;
+  const suc=document.getElementById('salSucursal').value;
+  const concepto=document.getElementById('salConcepto').value.trim();
+  if(!prodId||cant<=0)return toast('Selecciona un producto válido de la lista y una cantidad','error');
+  const p=await dbGet('productos',prodId);if(!p)return toast('Producto no encontrado','error');
+  const _ant=getStockLocal(p,suc);
+  if(cant>_ant)return toast(`Stock insuficiente en ${localNombre(suc)} (disponible: ${_ant})`,'error');
+  setStockLocal(p,_ant-cant,suc);
+  await dbPut('productos',p);
+  await logAct(`Salida de stock: ${cant} u. de "${p.nombre}" (${p.codigo||'s/cód.'}) en ${localNombre(suc)}${concepto?' · Motivo: '+concepto:''}`);
+  toast(`Stock de "${p.nombre}" (${localNombre(suc)}) → ${_ant-cant} u.`,'success');
+  closeModal('modalSalidaStock');renderCatalogo();populateSels();
 }
 // ══════════════════════════════════════════════════════════════
 // [15] CLIENTES
@@ -2518,12 +2716,33 @@ async function verDetTurno(id){
   openModal('modalDetalleTurno');
 }
 
+// Avisa por WhatsApp al barbero que su cliente acaba de llegar a la barbería.
+async function avisarClienteLlego(turnoId){
+  const t=await dbGet('turnos',turnoId);if(!t)return;
+  const barbs=await dbAll('barberos');
+  const b=barbs.find(x=>Number(x.id)===Number(t.barberoId||t.barbero_id));
+  if(!b){toast('Turno sin barbero asignado','error');return;}
+  const cel=(b.celular||'').replace(/\D/g,'');
+  if(!cel){toast('El barbero no tiene celular registrado','error');return;}
+  const cl=await dbAll('clientes');
+  const c=cl.find(x=>Number(x.id)===Number(t.clienteId||t.cliente_id));
+  const nombreCliente=c?c.nombre:(t.clienteNombre||'').split(' ')[0]||'Tu cliente';
+  const msg=`Aviso. Tu cliente ${nombreCliente} acaba de llegar a TAJOS.`;
+  const url='https://wa.me/'+cel+'?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
+}
+
 async function actualizarTurnoEstado(id){
   const t=await dbGet('turnos',id);
+  const estadoAnterior=t.estado;
   t.estado=document.getElementById('turnoEstadoSel').value;
   await dbPut('turnos',t);
   await logAct(`Cambió estado de turno · ${t.fecha||'?'} ${t.hora||''} · Cliente: ${t.clienteNombre||'sin nombre'} · Nuevo estado: ${t.estado}`);
   toast('Estado actualizado','success');
+  // Si se marcó "En atención" (y no lo estaba ya), avisar al barbero que el cliente llegó
+  if(t.estado==='en_atencion'&&estadoAnterior!=='en_atencion'){
+    await avisarClienteLlego(id);
+  }
   // Si se marcó como completado, ofrecer cobrar directamente
   if(t.estado==='completado'){
     closeModal('modalDetalleTurno');
@@ -2610,6 +2829,36 @@ function enviarWhatsAppBarbero(barbero,clienteNombre,fecha,hora,servicios){
     `Sistema TAJOS`;
   const url='https://wa.me/'+cel+'?text='+encodeURIComponent(msg);
   window.open(url,'_blank');
+}
+
+async function enviarWhatsAppReview(cliente,barbero){
+  const cel=(cliente.celular||'').replace(/\D/g,'');
+  if(!cel){console.warn('Cliente sin celular, no se envía review');return false;}
+  
+  // Verificar si ya fue enviado el link
+  const clientesReviewed=await dbAll('clientesReviewed');
+  if(clientesReviewed.find(cr=>cr.numero===cliente.celular)){
+    console.log('Cliente ya recibió link de review, no se envía de nuevo');
+    return false;
+  }
+  
+  const msg=`Fuiste atendido por ${barbero.nombre||'nuestro equipo'}! Evaluá la experiencia de hoy y participá de descuentos exclusivos! Entrá al enlace: https://g.page/r/CepTVx2uCAgDEAI/review
+
+Sistema TAJOS`;
+  
+  const url='https://wa.me/'+cel+'?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
+  
+  // Registrar que se envió el link
+  await dbAdd('clientesReviewed',{
+    clienteId:cliente.id,
+    nombre:cliente.nombre,
+    apellido:cliente.apellido,
+    numero:cliente.celular,
+    fechaEnvio:toDS(new Date())
+  });
+  
+  return true;
 }
 
 async function guardarTurno(){
@@ -2765,7 +3014,16 @@ async function guardarCobro(){
   cajero:ST.user?.login||'?'
   });
   await logAct(`Registró cobro de ${fmt(tot)} · Cliente: ${c?c.nombre+' '+c.apellido:'sin registro'} · Barbero: ${b?b.nombre+' '+b.apellido:'?'}`);
-  toast('Cobro registrado','success');closeModal('modalNuevoCobro');
+  toast('Cobro registrado','success');
+  
+  // Enviar link de review por WhatsApp si cliente tiene celular y barbero asignado
+  if(c && c.celular && b){
+    try{
+      await enviarWhatsAppReview(c, b);
+    }catch(e){console.warn('Error al enviar WhatsApp de review:', e);}
+  }
+  
+  closeModal('modalNuevoCobro');
   if(window._turnoACobrar){
     try{const turno=await dbGet('turnos',window._turnoACobrar);if(turno&&turno.estado!=='completado'){turno.estado='completado';await dbPut('turnos',turno);}}catch(e){}
     window._turnoACobrar=null;renderAgenda();
@@ -3065,8 +3323,8 @@ function updArqueoCalc(){
 async function confirmarCajaInicial(){
   const monto=parseFloat(document.getElementById('arqueoInicial')?.value)||0;
   if(monto<0)return toast('El monto no puede ser negativo','error');
-  await saveCajaTurno({cajaInicial:monto,cajaInicialConfirmada:true});
-  localStorage.setItem(getCajaKey(),'done');
+  await saveCajaTurno({cajaInicial:monto,cajaInicialConfirmada:true,turno:await getTurnoDeRegistro()});
+  localStorage.setItem(await getCajaKey(),'done');
   const turnoLabel=getTurnoActual()===1?'Turno 1':'Turno 2';
   await logAct(`Registró caja inicial: ${fmt(monto)} · ${turnoLabel}`);
   toast(`Caja inicial confirmada: ${fmt(monto)}`,'success');
@@ -3082,7 +3340,7 @@ async function agregarEgresoEf(){
   const ct=await getCajaTurno(hoy(),ST.localActivo,await getTurnoDeRegistro());
   const lista=(ct?.egresosEfectivo||[]);
   lista.push({concepto,monto,hora:new Date().toTimeString().slice(0,5)});
-  await saveCajaTurno({egresosEfectivo:lista});
+  await saveCajaTurno({egresosEfectivo:lista,turno:await getTurnoDeRegistro()});
   await logAct(`Registró egreso de efectivo: ${concepto} · ${fmt(monto)}`);
   toast(`Egreso registrado: ${fmt(monto)}`,'success');
   const ec=document.getElementById('aqEgresoConcepto');if(ec)ec.value='';
@@ -3096,7 +3354,7 @@ async function quitarEgresoEf(idx){
   if(!ct)return;
   const lista=(ct.egresosEfectivo||[]);
   lista.splice(idx,1);
-  await saveCajaTurno({egresosEfectivo:lista});
+  await saveCajaTurno({egresosEfectivo:lista,turno:await getTurnoDeRegistro()});
   renderArqueo();
 }
 
@@ -3178,7 +3436,7 @@ const efectivoEsperado =
   const data={
     fecha:td,local:ST.localActivo,turno,turnoLabel,
     cajaInicial,total,detalle,notas,
-    cajero:ex?.cajero||ct?.cajero||ST.user?.login,
+    cajero:ST.user?.login||ex?.cajero||ct?.cajero,
     verificado:ex?.verificado||false,
     cerrado:cerrar?true:(ex?.cerrado||false),
     egresosEfectivo,efectivoEntregado,
@@ -3187,7 +3445,7 @@ const efectivoEsperado =
   };
   if(ex){data.id=ex.id;await dbPut('arqueos',data);}
   else{await dbAdd('arqueos',data);}
-  localStorage.setItem(getCajaKey(),'done');
+  localStorage.setItem(await getCajaKey(),'done');
   return {cajaInicial,efectivoEntregado};
 }
 
@@ -3220,6 +3478,8 @@ async function verificarArqueo(id){
   toast('Arqueo verificado','success');renderArqueo();
   // Refrescar la página de arqueos si está activa
   if(document.getElementById('page-arqueos')?.classList.contains('active'))renderArqueosAdmin();
+  // Refrescar el modal de detalle si está abierto, para reflejar el estado verificado
+  if(document.getElementById('modalArqueoVer')?.classList.contains('visible'))verArqueoDetalle(id);
 }
 
 async function renderArqueosAdmin(){
@@ -3263,7 +3523,7 @@ async function renderArqueosAdmin(){
     const egEf=ctA.egresosEfectivo||[];
     const totEgEf=egEf.reduce((s,e)=>s+(e.monto||0),0);
     const efEnt=a.efectivoEntregado||0;
-    const cobsTurno=cobros.filter(c=>c.fecha===a.fecha&&Number(c.local)===Number(a.local));
+    const cobsTurno=cobros.filter(c=>c.fecha===a.fecha&&Number(c.local)===Number(a.local)&&Number(c.turno||0)===Number(a.turno));
     const efCobros=cobsTurno.reduce((s,c)=>s+(c.pagos||[]).filter(p=>p.metodo==='efectivo').reduce((x,p)=>x+(parseFloat(p.monto)||0),0),0);
     const efEsperado=ini+efCobros-totEgEf;
     const diff=efEnt>0?efEnt-efEsperado:null;
@@ -3286,11 +3546,8 @@ async function renderArqueosAdmin(){
       <td style="font-family:var(--font-cond);color:var(--gold-light)">${fmt(a.total||0)}</td>
       <td><span class="badge ${estadoBadge}">${estadoLabel}</span></td>
       <td>
-        ${!a.verificado&&a.cerrado
-          ?`<button class="btn btn-gold btn-sm" onclick="verificarArqueo(${a.id})">✅ Verificar</button>`
-          :a.verificado
-            ?`<span style="font-size:.75rem;color:var(--text-muted)">${fmtD((a.verificadoAt||'').slice(0,10))} · ${a.verificadoPor||a.verificado_por||'—'}</span>`
-            :''}
+        ${a.cerrado?`<button class="btn btn-outline btn-sm" onclick="verArqueoDetalle(${a.id})">👁 Visualizar</button> <button class="btn btn-ghost btn-sm" onclick="imprimirArqueoDetalle(${a.id})" title="Imprimir para firma">🖨</button>`:''}
+        ${a.verificado?`<span style="font-size:.75rem;color:var(--text-muted);display:block;margin-top:4px">${fmtD((a.verificadoAt||'').slice(0,10))} · ${a.verificadoPor||a.verificado_por||'—'}</span>`:''}
         ${egEf.length?`<button class="btn btn-ghost btn-sm" onclick="verEgresosArqueo(${a.id})" title="Ver egresos">💸</button>`:''}
       </td>
     </tr>`;
@@ -3308,6 +3565,106 @@ async function verEgresosArqueo(id){
   toast(`${tl} · ${a.cajero||'—'} · ${egEf.length} egreso(s): ${fmt(total)} — ${egEf.map(e=>`${e.concepto} ${fmt(e.monto)}`).join(' | ')}`,'info');
 }
 
+// Calcula los datos de detalle de un arqueo específico (compartido por Visualizar e Imprimir).
+async function _calcDetalleArqueo(a){
+  const cobros=await dbAll('cobros');
+  const ct=await getCajaTurno(a.fecha,a.local,a.turno)||{cajaInicial:0,egresosEfectivo:[]};
+  const ini=Number(ct.cajaInicial??ct.caja_inicial??0);
+  const egEf=ct.egresosEfectivo||[];
+  const totEgEf=egEf.reduce((s,e)=>s+(e.monto||0),0);
+  const tl=a.turnoLabel||a.turno_label||(a.turno==1?'Turno 1':'Turno 2');
+  const cobsTurno=cobros.filter(c=>c.fecha===a.fecha&&Number(c.local)===Number(a.local)&&Number(c.turno||0)===Number(a.turno));
+  const {total:totDia,detalle:mets,totalEfectivo:efTotal}=calcularResumenCobros(cobsTurno);
+  const efEnt=a.efectivoEntregado||0;
+  const efEsperado=ini+efTotal-totEgEf;
+  const diferencia=efEnt-efEsperado;
+  return {ini,egEf,totEgEf,tl,cobsTurno,totDia,mets,efTotal,efEnt,efEsperado,diferencia};
+}
+
+// Vista de solo lectura del detalle de un arqueo (admin) — igual al formulario de cierre, no editable.
+async function verArqueoDetalle(id){
+  const a=await dbGet('arqueos',id);if(!a)return;
+  const {ini,egEf,totEgEf,tl,cobsTurno,totDia,mets,efTotal,efEnt,efEsperado,diferencia}=await _calcDetalleArqueo(a);
+  document.getElementById('arqueoVerContent').innerHTML=`
+    <div class="alert alert-info" style="margin-bottom:14px">📍 ${localNombre(a.local)} · ${tl} · ${fmtD(a.fecha)} · Cajero: <strong>${a.cajero||'—'}</strong></div>
+    <div class="arqueo-box">
+      <div class="card-title" style="margin-bottom:10px">💵 Caja Inicial del Turno</div>
+      <div style="font-family:var(--font-display);font-size:1.8rem;color:var(--gold-light)">${fmt(ini)}</div>
+    </div>
+    <div class="arqueo-box">
+      <div class="card-title" style="margin-bottom:10px">📊 Resumen del Turno — ${cobsTurno.length} cobros</div>
+      ${METODOS.map(m=>`<div class="arqueo-row"><span>${m.icon} ${m.label}</span><span class="arqueo-total">${fmt(mets[m.id]||0)}</span></div>`).join('')}
+      <div class="arqueo-row" style="margin-top:8px"><span style="font-family:var(--font-cond);font-weight:700">TOTAL FACTURADO</span><span class="arqueo-total" style="font-size:1.4rem">${fmt(totDia)}</span></div>
+    </div>
+    <div class="arqueo-box">
+      <div class="card-title" style="margin-bottom:10px">💼 Efectivo en Caja</div>
+      <div class="arqueo-row"><span>Caja inicial</span><span>${fmt(ini)}</span></div>
+      <div class="arqueo-row"><span>Cobros en efectivo</span><span>${fmt(efTotal)}</span></div>
+      <div class="arqueo-row" style="color:var(--danger)"><span>Egresos de efectivo</span><span>−${fmt(totEgEf)}</span></div>
+      <div class="arqueo-row"><span style="font-family:var(--font-cond);font-weight:700">TOTAL EFECTIVO ESPERADO</span><span class="arqueo-total">${fmt(efEsperado)}</span></div>
+    </div>
+    <div class="arqueo-box">
+      <div class="card-title" style="margin-bottom:10px">💸 Egresos de Efectivo</div>
+      ${egEf.length?egEf.map(e=>`<div class="arqueo-row"><span>${e.concepto||'Sin concepto'}</span><span class="arqueo-total" style="font-size:.95rem;color:#e74c3c">−${fmt(e.monto)}</span></div>`).join(''):'<div style="color:var(--text-dim);font-size:.82rem;padding:6px 0">Sin egresos registrados</div>'}
+    </div>
+    <div class="arqueo-box">
+      <div class="card-title" style="margin-bottom:10px">🏦 Efectivo Entregado al Cierre</div>
+      <div class="arqueo-row"><span>Esperado en caja</span><span class="arqueo-total">${fmt(efEsperado)}</span></div>
+      <div class="arqueo-row"><span>Entregado</span><span class="arqueo-total">${efEnt>0?fmt(efEnt):'—'}</span></div>
+      <div class="arqueo-row"><span style="font-family:var(--font-cond);font-weight:700">DIFERENCIA</span><span class="arqueo-total" style="color:${diferencia===0?'var(--success)':diferencia>0?'#f1c40f':'var(--danger)'}">${efEnt>0?(diferencia>0?'+':'')+fmt(diferencia):'—'}</span></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notas / Observaciones</label>
+      <div class="arqueo-box" style="font-size:.85rem">${a.notas||a.nota||'<span style="color:var(--text-dim)">Sin notas</span>'}</div></div>
+    <div style="margin-top:6px">${a.verificado
+      ?`<span class="badge badge-green" style="font-size:.8rem">✅ Verificado por ${a.verificadoPor||a.verificado_por||'—'} · ${fmtD((a.verificadoAt||'').slice(0,10))}</span>`
+      :a.cerrado
+        ?`<span class="badge badge-gold" style="font-size:.8rem">📤 Cerrado — pendiente de verificación</span>`
+        :`<span class="badge badge-yellow" style="font-size:.8rem">⏳ Turno en curso</span>`}</div>`;
+  const footer=document.getElementById('arqueoVerFooter');
+  footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modalArqueoVer')">Cerrar</button>
+    ${!a.verificado&&a.cerrado?`<button class="btn btn-gold" onclick="verificarArqueo(${id})">✅ Verificar</button>`:''}`;
+  openModal('modalArqueoVer');
+}
+
+// Formulario imprimible (fondo blanco) del cierre de turno, para firma del cajero.
+async function imprimirArqueoDetalle(id){
+  const a=await dbGet('arqueos',id);if(!a)return;
+  const {ini,egEf,totEgEf,tl,cobsTurno,totDia,mets,efTotal,efEnt,efEsperado,diferencia}=await _calcDetalleArqueo(a);
+  document.getElementById('arqueoPrintArea').innerHTML=`
+    <div style="font-family:Arial,sans-serif;color:#000;padding:24px;max-width:720px;margin:0 auto">
+      <h2 style="margin:0 0 4px">Cierre de Turno</h2>
+      <div style="font-size:.9rem;margin-bottom:16px">${localNombre(a.local)} · ${tl} · ${fmtD(a.fecha)}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:16px">
+        <tr><td style="padding:4px 0;width:180px">Cajero:</td><td>${a.cajero||'—'}</td></tr>
+        <tr><td style="padding:4px 0">Caja inicial:</td><td>${fmt(ini)}</td></tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:16px">
+        <thead><tr><th style="text-align:left;border-bottom:1px solid #000;padding:4px 0">Método</th><th style="text-align:right;border-bottom:1px solid #000;padding:4px 0">Monto</th></tr></thead>
+        <tbody>
+          ${METODOS.map(m=>`<tr><td style="padding:3px 0">${m.label}</td><td style="text-align:right">${fmt(mets[m.id]||0)}</td></tr>`).join('')}
+          <tr><td style="padding:6px 0;font-weight:bold;border-top:1px solid #000">TOTAL FACTURADO</td><td style="text-align:right;font-weight:bold;border-top:1px solid #000">${fmt(totDia)}</td></tr>
+        </tbody>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:.9rem;margin-bottom:16px">
+        <tr><td style="padding:3px 0">Caja inicial</td><td style="text-align:right">${fmt(ini)}</td></tr>
+        <tr><td style="padding:3px 0">Cobros en efectivo</td><td style="text-align:right">${fmt(efTotal)}</td></tr>
+        <tr><td style="padding:3px 0">Egresos de efectivo</td><td style="text-align:right">−${fmt(totEgEf)}</td></tr>
+        <tr><td style="padding:6px 0;font-weight:bold;border-top:1px solid #000">TOTAL EFECTIVO ESPERADO</td><td style="text-align:right;font-weight:bold;border-top:1px solid #000">${fmt(efEsperado)}</td></tr>
+        <tr><td style="padding:3px 0">Efectivo entregado</td><td style="text-align:right">${efEnt>0?fmt(efEnt):'—'}</td></tr>
+        <tr><td style="padding:3px 0">Diferencia</td><td style="text-align:right">${efEnt>0?(diferencia>0?'+':'')+fmt(diferencia):'—'}</td></tr>
+      </table>
+      ${egEf.length?`<div style="font-size:.85rem;margin-bottom:16px">Egresos: ${egEf.map(e=>`${e.concepto} ${fmt(e.monto)}`).join(' · ')}</div>`:''}
+      ${a.notas||a.nota?`<div style="font-size:.85rem;margin-bottom:16px">Notas: ${a.notas||a.nota}</div>`:''}
+      <div style="display:flex;justify-content:space-between;margin-top:60px;font-size:.85rem">
+        <div style="width:45%;border-top:1px solid #000;padding-top:6px;text-align:center">Firma del Cajero</div>
+        <div style="width:45%;border-top:1px solid #000;padding-top:6px;text-align:center">Firma de Verificación</div>
+      </div>
+    </div>`;
+  document.body.classList.add('printing-arqueo');
+  window.print();
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing-arqueo'));
+
 
 // ══════════════════════════════════════════════════════════════
 // [20] COMISIONES
@@ -3321,6 +3678,21 @@ function calcComisionCobro(cobro){
 }
 function calcComisionLista(cobros){
   return cobros.reduce((s,c)=>s+calcComisionCobro(c),0);
+}
+// Desglose de comisión por tipo (servicios vs productos comisionables) para el reporte de comisiones.
+function calcComisionServiciosCobro(cobro){
+  return (cobro.items||[]).reduce((s,i)=>i.tipo==='servicio'?s+i.precio*((i.comision??50)/100):s,0);
+}
+function calcComisionProductosCobro(cobro){
+  return (cobro.items||[]).reduce((s,i)=>(i.tipo==='producto'&&i.comisionable)?s+i.precio*0.10:s,0);
+}
+// Facturado comisionable: solo servicios y productos comisionables, excluye productos no comisionables (bebidas, snacks, etc.)
+function calcFacturadoComisionableCobro(cobro){
+  return (cobro.items||[]).reduce((s,i)=>{
+    if(i.tipo==='servicio')return s+i.precio;
+    if(i.tipo==='producto'&&i.comisionable)return s+i.precio;
+    return s;
+  },0);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -3366,8 +3738,8 @@ async function refreshDash(){
 function toggleReporteCustom(){const v=document.getElementById('reportePeriodo').value;document.getElementById('reporteCustom').style.display=v==='custom'?'flex':'none';}
 function switchReporteTab(tab,el){
   document.querySelectorAll('#page-reportes .tabs .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  ['resumen','comisiones','servicios'].forEach(t=>document.getElementById('reporteTab'+t[0].toUpperCase()+t.slice(1)).style.display=t===tab?'':'none');
-  generarReporte();
+  ['resumen','comisiones','servicios','flujo'].forEach(t=>document.getElementById('reporteTab'+t[0].toUpperCase()+t.slice(1)).style.display=t===tab?'':'none');
+  if(tab==='flujo')generarFlujoClientes();else generarReporte();
 }
 async function generarReporte(){
   const per=document.getElementById('reportePeriodo').value;
@@ -3405,13 +3777,167 @@ async function generarReporte(){
   barbs=filtrarPorLocalPermitido(barbs);
   if(lf>0)barbs=barbs.filter(b=>Number(b.local)===Number(lf)||Number(b.local)===0);
   document.getElementById('rComisionesTbody').innerHTML=barbs.map(b=>{
-    const bc=cobros.filter(c=>Number(c.barberoId||c.barbero_id)===Number(b.id));const bt=bc.reduce((s,c)=>s+c.total,0);
-    const bco=calcComisionLista(bc);const pct=tot?(bt/tot*100).toFixed(1):0;
-    return `<tr><td><strong>${b.nombre} ${b.apellido}</strong></td><td>${bc.length}</td><td style="font-family:var(--font-cond);color:var(--gold-light)">${fmt(bt)}</td><td style="font-family:var(--font-cond);color:var(--success)">${fmt(bco)}</td><td style="min-width:120px"><div class="comm-bar-wrap"><div class="comm-bar" style="width:${pct}%"></div></div><div style="font-size:.72rem;color:var(--text-dim)">${pct}%</div></td></tr>`;
-  }).join('')||'<tr><td colspan="5"><div class="empty-state"><p>Sin datos</p></div></td></tr>';
+    const bc=cobros.filter(c=>Number(c.barberoId||c.barbero_id)===Number(b.id));const bt=bc.reduce((s,c)=>s+calcFacturadoComisionableCobro(c),0);
+    const bcoServ=bc.reduce((s,c)=>s+calcComisionServiciosCobro(c),0);const bcoProd=bc.reduce((s,c)=>s+calcComisionProductosCobro(c),0);const pct=tot?(bt/tot*100).toFixed(1):0;
+    return `<tr><td><strong>${b.nombre} ${b.apellido}</strong></td><td>${bc.length}</td><td style="font-family:var(--font-cond);color:var(--gold-light)">${fmt(bt)}</td><td style="font-family:var(--font-cond);color:var(--success)">${fmt(bcoServ)}</td><td style="font-family:var(--font-cond);color:var(--success)">${fmt(bcoProd)}</td><td style="min-width:120px"><div class="comm-bar-wrap"><div class="comm-bar" style="width:${pct}%"></div></div><div style="font-size:.72rem;color:var(--text-dim)">${pct}%</div></td></tr>`;
+  }).join('')||'<tr><td colspan="6"><div class="empty-state"><p>Sin datos</p></div></td></tr>';
   const sMap={};cobros.forEach(co=>(co.items||[]).filter(i=>i.tipo==='servicio').forEach(i=>{if(!sMap[i.nombre])sMap[i.nombre]={count:0,total:0};sMap[i.nombre].count++;sMap[i.nombre].total+=i.precio;}));
   const sL=Object.entries(sMap).sort((a,b)=>b[1].total-a[1].total);const stot=sL.reduce((s,[,v])=>s+v.total,0);
   document.getElementById('rServiciosTbody').innerHTML=sL.length?sL.map(([n,d])=>`<tr><td><strong>${n}</strong></td><td>${d.count}</td><td style="font-family:var(--font-cond);color:var(--gold-light)">${fmt(d.total)}</td><td><div class="comm-bar-wrap"><div class="comm-bar" style="width:${stot?(d.total/stot*100).toFixed(1):0}%"></div></div><span style="font-size:.75rem;color:var(--text-muted)">${stot?(d.total/stot*100).toFixed(1):0}%</span></td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state"><p>Sin datos</p></div></td></tr>';
+}
+
+// Puebla los selectores dependientes de "Tipo de filtro" (semanal/mensual/anual) con
+// opciones relativas a hoy, y fija el valor por defecto del selector diario. Idempotente.
+function _initFlujoSelectores(){
+  const selSem=document.getElementById('flujoValorSemanal');
+  const selMes=document.getElementById('flujoValorMensual');
+  const selAnio=document.getElementById('flujoValorAnual');
+  const inpDia=document.getElementById('flujoValorDiario');
+  if(!selSem||selSem.options.length)return; // ya inicializado
+  inpDia.value=hoy();
+  // Semanas: últimas 8, lunes a sábado
+  const hoyD=new Date();
+  const diffLunes=(hoyD.getDay()+6)%7; // 0=lunes
+  for(let i=0;i<8;i++){
+    const lunes=new Date(hoyD);lunes.setDate(hoyD.getDate()-diffLunes-7*i);
+    const sabado=new Date(lunes);sabado.setDate(lunes.getDate()+5);
+    const label=`Lun ${lunes.getDate()}/${lunes.getMonth()+1} – Sáb ${sabado.getDate()}/${sabado.getMonth()+1}`;
+    const opt=document.createElement('option');opt.value=toDS(lunes);opt.textContent=label;
+    selSem.appendChild(opt);
+  }
+  // Meses: últimos 12
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  for(let i=0;i<12;i++){
+    const d=new Date(hoyD.getFullYear(),hoyD.getMonth()-i,1);
+    const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const opt=document.createElement('option');opt.value=val;opt.textContent=meses[d.getMonth()]+' '+d.getFullYear();
+    selMes.appendChild(opt);
+  }
+  // Años: últimos 5
+  for(let i=0;i<5;i++){
+    const y=hoyD.getFullYear()-i;
+    const opt=document.createElement('option');opt.value=String(y);opt.textContent=String(y);
+    selAnio.appendChild(opt);
+  }
+  // Sucursales: ocultar/fijar según permisos del usuario (mismo criterio que reporteLocal)
+  const permitidos=getLocalesPermitidos();
+  const c1=document.getElementById('flujoLocal1'),c2=document.getElementById('flujoLocal2');
+  c1.checked=permitidos.includes(1);c1.disabled=!permitidos.includes(1);
+  c2.checked=permitidos.includes(2);c2.disabled=!permitidos.includes(2);
+  if(permitidos.length===1)document.getElementById('flujoSucursales').style.opacity='.5';
+}
+
+// Alterna qué selector de valor se muestra según el tipo de filtro elegido.
+function _flujoTipoChanged(){
+  const tipo=document.getElementById('flujoTipo').value;
+  document.getElementById('flujoValorDiario').style.display=tipo==='diario'?'':'none';
+  document.getElementById('flujoValorSemanal').style.display=tipo==='semanal'?'':'none';
+  document.getElementById('flujoValorMensual').style.display=tipo==='mensual'?'':'none';
+  document.getElementById('flujoValorAnual').style.display=tipo==='anual'?'':'none';
+  generarFlujoClientes();
+}
+
+// Redondea una hora "HH:MM" al slot de 30min más cercano hacia abajo (mismo grillado que HORAS).
+function _slotDe(horaStr){
+  if(!horaStr)return null;
+  const [hh,mm]=horaStr.split(':').map(Number);
+  if(isNaN(hh))return null;
+  const totalMin=Math.floor((hh*60+(mm||0))/30)*30;
+  return String(Math.floor(totalMin/60)).padStart(2,'0')+':'+String(totalMin%60).padStart(2,'0');
+}
+
+// Flujo de clientes: horas pico (turnos, con cancelados superpuestos), duración real 30/60min
+// (cobros = servicio efectivamente consumido, + turnos cancelados que nunca generaron cobro),
+// y top 20% de clientes (Pareto) por monto o por visitas, según selector.
+async function generarFlujoClientes(){
+  const tipo=document.getElementById('flujoTipo').value;
+  const orden=document.getElementById('flujoParetoOrden')?.value||'monto';
+  const permitidos=getLocalesPermitidos();
+  const localesElegidos=[1,2].filter(n=>permitidos.includes(n)&&document.getElementById('flujoLocal'+n).checked);
+
+  const td=hoy();
+  let desde,hasta=td,mesesPeriodo=1;
+  if(tipo==='diario'){desde=hasta=document.getElementById('flujoValorDiario').value||td;mesesPeriodo=1/30;}
+  else if(tipo==='semanal'){
+    const lunes=document.getElementById('flujoValorSemanal').value;
+    const d=new Date(lunes+'T00:00:00');d.setDate(d.getDate()+5);
+    desde=lunes;hasta=toDS(d);mesesPeriodo=7/30;
+  }else if(tipo==='anual'){
+    const y=document.getElementById('flujoValorAnual').value;
+    desde=y+'-01-01';hasta=y+'-12-31';mesesPeriodo=12;
+  }else{
+    const ym=document.getElementById('flujoValorMensual').value;
+    desde=ym+'-01';
+    const [yy,mm]=ym.split('-').map(Number);
+    hasta=toDS(new Date(yy,mm,0));mesesPeriodo=1;
+  }
+
+  let turnos=await dbAll('turnos');
+  turnos=turnos.filter(t=>t.fecha>=desde&&t.fecha<=hasta&&localesElegidos.includes(Number(t.local)));
+
+  let cobros=await dbAll('cobros');
+  cobros=cobros.filter(c=>c.fecha>=desde&&c.fecha<=hasta&&localesElegidos.includes(Number(c.local)));
+
+  const svcs=await dbAll('servicios');
+  const cancelados=turnos.filter(t=>t.estado==='cancelado');
+  document.getElementById('fTotalAgendados').textContent=turnos.length;
+  document.getElementById('fTurnosCancelados').textContent=cancelados.length;
+
+  // Duración 30/60min: servicio REAL consumido (desde cobros) + turnos cancelados
+  // (que nunca generaron cobro, así que se toma su duración agendada como aproximación).
+  let c30=0,c60=0;
+  cobros.forEach(co=>{
+    const nombres=(co.items||[]).filter(i=>i.tipo==='servicio').map(i=>i.nombre);
+    if(!nombres.length)return;
+    if(_turnoSlots(nombres,svcs)<=1)c30++;else c60++;
+  });
+  cancelados.forEach(t=>{if(_turnoSlots(t.servicios,svcs)<=1)c30++;else c60++;});
+  document.getElementById('fTurnos30').textContent=c30;
+  document.getElementById('fTurnos60').textContent=c60;
+
+  // Horas pico: histograma en slots de 30min (misma grilla que la agenda), con cancelados superpuestos
+  const horaTotal={},horaCancel={};
+  turnos.forEach(t=>{
+    const s=_slotDe(t.hora);if(!s)return;
+    horaTotal[s]=(horaTotal[s]||0)+1;
+    if(t.estado==='cancelado')horaCancel[s]=(horaCancel[s]||0)+1;
+  });
+  const maxH=Math.max(1,...Object.values(horaTotal));
+  document.getElementById('fHorasPico').innerHTML=HORAS.map(h=>{
+    const tot=horaTotal[h]||0,can=horaCancel[h]||0;
+    const pctTot=(tot/maxH*100).toFixed(1),pctCan=(can/maxH*100).toFixed(1);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span>${h}</span>
+        <span style="font-family:var(--font-cond);font-weight:700;color:var(--gold-light)">${tot} turno${tot!==1?'s':''}${can?` <span style="color:var(--danger);font-weight:400">(${can} cancelado${can!==1?'s':''})</span>`:''}</span>
+      </div>
+      <div class="comm-bar-wrap" style="position:relative">
+        <div class="comm-bar" style="width:${pctTot}%"></div>
+        <div style="position:absolute;top:0;left:0;height:100%;width:${pctCan}%;background:var(--danger);border-radius:4px"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Top clientes — principio de Pareto: el 20% de los clientes con más actividad
+  const cl=await dbAll('clientes');const cMap={};cl.forEach(c=>cMap[String(c.id)]=c.nombre+' '+c.apellido);
+  const cliMap={};
+  cobros.forEach(co=>{
+    const key=String(co.clienteId||co.cliente_id||'');
+    if(!key)return;
+    if(!cliMap[key])cliMap[key]={nombre:cMap[key]||'—',visitas:0,monto:0};
+    cliMap[key].visitas++;
+    cliMap[key].monto+=co.total||0;
+  });
+  const todos=Object.values(cliMap);
+  const ordenados=[...todos].sort((a,b)=>orden==='visitas'?b.visitas-a.visitas:b.monto-a.monto);
+  const totalGlobal=ordenados.reduce((s,c)=>s+(orden==='visitas'?c.visitas:c.monto),0);
+  let acumulado=0;const topCli=[];
+  for(const c of ordenados){
+    if(acumulado>=totalGlobal*0.8 && topCli.length>0)break; // ya se explicó el 80%
+    topCli.push(c);
+    acumulado+=(orden==='visitas'?c.visitas:c.monto);
+  }
+  document.getElementById('fTopClientesTbody').innerHTML=topCli.length?topCli.map((c,i)=>`<tr><td>${i+1}</td><td><strong>${c.nombre}</strong></td><td>${c.visitas}</td><td style="font-family:var(--font-cond);color:var(--gold-light)">${fmt(c.monto)}</td><td>${(c.visitas/mesesPeriodo).toFixed(1)}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty-state"><p>Sin datos</p></div></td></tr>';
 }
 
 
@@ -3807,36 +4333,10 @@ async function salirSinBackup(){
 // [26] SEED
 // ══════════════════════════════════════════════════════════════
 async function seedData(){
-  const u=await dbAll('usuarios');
-  if(!u.length){
-    await dbAdd('usuarios',{nombre:'Administrador',apellido:'Sistema',login:'admin',password:'2686',rol:'admin',estado:'activo',email:'',ultimoAcceso:''});
-    await dbAdd('usuarios',{nombre:'Recepción',apellido:'Turno 1',login:'rescob',password:'6147',rol:'cajero',estado:'activo',email:'',ultimoAcceso:''});
-    await dbAdd('usuarios',{nombre:'Angel',apellido:'Turno 2',login:'angel',password:'8800',rol:'cajero',estado:'activo',email:'',ultimoAcceso:''});
-  }
-  const s=await dbAll('servicios');
-  if(!s.length){
-    const ss=[{nombre:'Corte Clásico',precio:50000,duracion:30,categoria:'corte',descripcion:'Tijera y máquina, estilo tradicional'},{nombre:'Corte Moderno',precio:70000,duracion:40,categoria:'corte',descripcion:'Fade y técnicas actuales'},{nombre:'Barba',precio:45000,duracion:20,categoria:'barba',descripcion:'Perfilado y afeitado'},{nombre:'Ritual de Barba',precio:80000,duracion:45,categoria:'ritual',descripcion:'Toalla caliente y aceites'},{nombre:'Combo Corte + Barba',precio:90000,duracion:55,categoria:'combo',descripcion:'Corte clásico + perfilado'},{nombre:'Combo Premium',precio:130000,duracion:70,categoria:'combo',descripcion:'Corte moderno + ritual completo'}];
-    for(const x of ss)await dbAdd('servicios',x);
-  }
-  const p=await dbAll('productos');
-  if(!p.length){
-    const pp=[{nombre:'Pomada Suave',precio:40000,stock:15,descripcion:'Fijación suave y brillo'},{nombre:'Pomada Fuerte',precio:40000,stock:12,descripcion:'Máxima fijación'},{nombre:'Aceite de Barba',precio:65000,stock:8,descripcion:'Hidratación y suavizado'},{nombre:'Shampoo para Barba',precio:50000,stock:10,descripcion:'Limpieza suave'}];
-    for(const x of pp)await dbAdd('productos',x);
-  }
-  const b=await dbAll('barberos');
-  if(!b.length){
-    const bb=[{nombre:'Carlos',apellido:'Martínez',fechaIngreso:'2023-01-15',local:1,comision:50,email:''},{nombre:'Juan',apellido:'Pérez',fechaIngreso:'2023-03-20',local:1,comision:50,email:''},{nombre:'Luis',apellido:'García',fechaIngreso:'2023-06-01',local:2,comision:50,email:''}];
-    for(const x of bb)await dbAdd('barberos',x);
-  }
-  // Seed barberoUsers: create portal access for each barbero without one
-  const allBarbs=await dbAll('barberos');
-  const bUsers=await dbAll('barberoUsers');
-  for(const barb of allBarbs){
-    if(!bUsers.find(u=>Number(u.barberoId||u.barbero_id)===Number(barb.id))){
-      const login=barb.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'');
-      await dbAdd('barberoUsers',{barberoId:barb.id,login,pin:'1234',activo:true,ultimoAcceso:''});
-    }
-  }
+  // COMPLETAMENTE DESACTIVADO.
+  // Servicios, barberos, productos, usuarios se crean SOLO manualmente por admin.
+  // Esta función NO HACE NADA y nunca debe hacer nada.
+  console.log('seedData desactivado - datos maestros se crean manualmente');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4320,8 +4820,8 @@ async function getTurnoDeRegistro(){
   ST.turnoActivo = turnoCalculado;
   return ST.turnoActivo;
 }
-function getCajaKey(){
-  return 'tajos_caja_'+hoy()+'_t'+getTurnoActual()+'_l'+ST.localActivo;
+async function getCajaKey(){
+  return 'tajos_caja_'+hoy()+'_t'+(await getTurnoDeRegistro())+'_l'+ST.localActivo;
 }
 
 // Obtener el registro de caja_turnos del turno actual
@@ -4339,7 +4839,7 @@ async function saveCajaTurno(updates){
   const ex=await getCajaTurno(td,local,turno);
   const merged={
     fecha:td,local,turno,turnoLabel,
-    cajero:ex?.cajero||ST.user?.login,
+    cajero:ST.user?.login||ex?.cajero,
     cajaInicial:updates.cajaInicial!=null?updates.cajaInicial:(ex?.cajaInicial||ex?.caja_inicial||0),
     cajaInicialConfirmada:updates.cajaInicialConfirmada!=null?updates.cajaInicialConfirmada:(ex?.cajaInicialConfirmada||ex?.caja_inicial_confirmada||false),
     egresosEfectivo:updates.egresosEfectivo!=null?updates.egresosEfectivo:(ex?.egresosEfectivo||[]),
@@ -4353,17 +4853,18 @@ async function saveCajaTurno(updates){
 
 async function mostrarCajaInicialSiNecesario(){
   if(!ST.user||ST.user.rol==='admin')return;
-  const key=getCajaKey();
+  const turno=await getTurnoDeRegistro();
+  const key=await getCajaKey();
   if(localStorage.getItem(key)==='done')return;
   // Verificar si ya existe en caja_turnos
-  const ct=await getCajaTurno(hoy(),ST.localActivo,getTurnoActual());
+  const ct=await getCajaTurno(hoy(),ST.localActivo,turno);
   if(ct&&ct.cajaInicialConfirmada){localStorage.setItem(key,'done');return;}
   // Si ya tenía caja inicial en arqueos (migración), usar ese valor
   const arqs=await dbAll('arqueos');
-  const td=hoy();const turno=getTurnoActual();
+  const td=hoy();
   const exArq=arqs.find(a=>a.fecha===td&&Number(a.local)===Number(ST.localActivo)&&a.turno==turno);
   if(exArq&&(exArq.cajaInicial||exArq.caja_inicial)){
-    await saveCajaTurno({cajaInicial:exArq.cajaInicial||exArq.caja_inicial||0,cajaInicialConfirmada:true});
+    await saveCajaTurno({cajaInicial:exArq.cajaInicial||exArq.caja_inicial||0,cajaInicialConfirmada:true,turno});
     localStorage.setItem(key,'done');return;
   }
 
@@ -4412,16 +4913,17 @@ async function mostrarCajaInicialSiNecesario(){
 async function guardarCajaInicial(){
   const monto=parseFloat(document.getElementById('cajaInicialMonto').value)||0;
   const nota=document.getElementById('cajaInicialNota').value.trim();
-  await saveCajaTurno({cajaInicial:monto,cajaInicialConfirmada:true});
-  localStorage.setItem(getCajaKey(),'done');
-  await logAct('Registró caja inicial: '+fmt(monto)+' · '+(getTurnoActual()===1?'Turno 1':'Turno 2'));
+  const turno=await getTurnoDeRegistro();
+  await saveCajaTurno({cajaInicial:monto,cajaInicialConfirmada:true,turno});
+  localStorage.setItem(await getCajaKey(),'done');
+  await logAct('Registró caja inicial: '+fmt(monto)+' · '+(turno===1?'Turno 1':'Turno 2'));
   toast('Caja inicial registrada: '+fmt(monto),'success');
   document.getElementById('modalCajaInicial').classList.remove('visible');
   refreshCaja();
 }
 
-function omitirCajaInicial(){
-  localStorage.setItem(getCajaKey(),'skipped');
+async function omitirCajaInicial(){
+  localStorage.setItem(await getCajaKey(),'skipped');
   document.getElementById('modalCajaInicial').classList.remove('visible');
 }
 
@@ -4872,5 +5374,6 @@ if(_fecha === hoy()){
     </div>
   </div>
 </div>
+<div id="arqueoPrintArea"></div>
 </body>
 </html>
