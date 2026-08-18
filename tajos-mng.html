@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -259,7 +259,8 @@ tbody tr:last-child td{border-bottom:none;}
       <input class="form-control" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-gold" style="width:100%;margin-top:8px;padding:12px" onclick="doLogin()">Ingresar al Sistema</button>
-    <div style="text-align:center;margin-top:16px;font-size:.75rem;color:var(--text-dim)">TAJOS v2.0 · Acceso restringido</div>
+    <div style="text-align:center;margin-top:16px;font-size:.75rem;color:var(--text-dim)">TAJOS v1.0 · Acceso restringido</div>
+    <div style="text-align:center;margin-top:16px;font-size:.75rem;color:var(--text-dim)">Desarrollado por AwterSpacer Dev Ops</div>
   </div>
 </div>
 
@@ -427,11 +428,6 @@ tbody tr:last-child td{border-bottom:none;}
   <div id="catTabMetodos" style="display:none"></div>
   <div id="catTabServicios"><div class="grid-3" id="serviciosList"></div></div>
   <div id="catTabProductos" style="display:none">
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <button class="btn btn-outline btn-sm cat-admin-btn" onclick="abrirModalEntradaStock()">📥 Registrar Entrada</button>
-      <button class="btn btn-outline btn-sm cat-admin-btn" onclick="abrirModalSalidaStock()">📤 Registrar Salida</button>
-      <button class="btn btn-gold btn-sm cat-admin-btn" onclick="openModal('modalNuevoProducto')">＋ Crear Artículo</button>
-    </div>
     <div class="grid-3" id="productosList"></div>
   </div>
   <div id="catTabCategorias" style="display:none">
@@ -642,6 +638,9 @@ tbody tr:last-child td{border-bottom:none;}
         <option value="">Todas las categorías</option>
       </select>
       <input type="text" class="form-control" id="invBuscar" placeholder="Buscar..." style="width:150px" oninput="renderInventario()">
+      <button class="btn btn-outline btn-sm" onclick="abrirModalEntradaStock()">📥 Registrar Entrada</button>
+      <button class="btn btn-outline btn-sm" onclick="abrirModalSalidaStock()">📤 Registrar Salida</button>
+      <button class="btn btn-gold btn-sm" onclick="openModal('modalNuevoProducto')">＋ Crear Artículo</button>
       <button class="btn btn-outline" onclick="exportarInventarioXLSX()">📊 Exportar XLSX</button>
     </div>
   </div>
@@ -2179,6 +2178,7 @@ async function guardarProducto(){
     await logAct(`Creó producto: ${data.nombre} (${data.codigo||'s/cód.'})`);toast('Producto creado','success');
   }
   closeModal('modalNuevoProducto');document.getElementById('prodEditId').value='';renderCatalogo();populateSels();
+  if(document.getElementById('page-inventario')?.classList.contains('active'))renderInventario();
 }
 
 async function editarProducto(id){
@@ -2247,6 +2247,7 @@ async function registrarEntradaStock(){
   await logAct(`Entrada de stock: ${cant} u. de "${p.nombre}" (${p.codigo||'s/cód.'}) en ${localNombre(suc)}${factura?' · Factura: '+factura:''}${costo?' · Costo: '+fmt(costo):''}`);
   toast(`Stock de "${p.nombre}" (${localNombre(suc)}) → ${_ant+cant} u.`,'success');
   closeModal('modalEntradaStock');renderCatalogo();populateSels();
+  if(document.getElementById('page-inventario')?.classList.contains('active'))renderInventario();
 }
 async function registrarSalidaStock(){
   const prodId=+document.getElementById('salProductoId').value;
@@ -2262,6 +2263,7 @@ async function registrarSalidaStock(){
   await logAct(`Salida de stock: ${cant} u. de "${p.nombre}" (${p.codigo||'s/cód.'}) en ${localNombre(suc)}${concepto?' · Motivo: '+concepto:''}`);
   toast(`Stock de "${p.nombre}" (${localNombre(suc)}) → ${_ant-cant} u.`,'success');
   closeModal('modalSalidaStock');renderCatalogo();populateSels();
+  if(document.getElementById('page-inventario')?.classList.contains('active'))renderInventario();
 }
 // ══════════════════════════════════════════════════════════════
 // [15] CLIENTES
