@@ -20,7 +20,7 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{font-size:15px;}
-body{background:var(--bg-deep);color:var(--text-main);font-family:var(--font-body);min-height:100vh;}
+body{background:var(--bg-deep);color:var(--text-main);font-family:var(--font-body);min-height:100vh;touch-action:pan-y;}
 ::-webkit-scrollbar{width:6px;height:6px;}::-webkit-scrollbar-track{background:var(--bg-dark);}::-webkit-scrollbar-thumb{background:var(--gold-dim);border-radius:3px;}
 
 /* LOGIN */
@@ -47,7 +47,7 @@ body{background:var(--bg-deep);color:var(--text-main);font-family:var(--font-bod
 .topbar-date{font-size:.75rem;color:var(--text-muted);}
 
 /* NAV TABS */
-#navTabs{background:var(--bg-dark);border-bottom:1px solid var(--border);display:flex;padding:0 20px;gap:4px;overflow-x:auto;}
+#navTabs{background:var(--bg-dark);border-bottom:1px solid var(--border);display:flex;padding:0 20px;gap:4px;overflow-x:auto;touch-action:pan-x;}
 .nav-tab{padding:12px 18px;font-family:var(--font-cond);font-weight:700;font-size:.9rem;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;margin-bottom:-1px;}
 .nav-tab:hover{color:var(--text-main);}
 .nav-tab.active{color:var(--gold-light);border-bottom-color:var(--gold);}
@@ -100,7 +100,7 @@ select.form-control option{background:var(--bg-card);}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 
 /* TABLE */
-.table-wrap{overflow-x:auto;border-radius:var(--radius);}
+.table-wrap{overflow-x:auto;border-radius:var(--radius);touch-action:pan-x;}
 table{width:100%;border-collapse:collapse;font-size:.88rem;}
 thead tr{background:var(--bg-raised);}
 th{padding:10px 14px;text-align:left;font-family:var(--font-cond);font-size:.75rem;letter-spacing:1px;color:var(--gold);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -119,7 +119,7 @@ tbody tr:last-child td{border-bottom:none;}
 .badge-yellow{background:rgba(241,196,15,.15);color:#f1c40f;}
 
 /* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-overlay.show{display:flex;animation:fadeIn .2s ease;}
 .modal{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:var(--radius-lg);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.7),var(--shadow-gold);animation:popIn .25s cubic-bezier(.34,1.56,.64,1);}
 .modal-lg{max-width:720px;}
@@ -274,7 +274,7 @@ tbody tr:last-child td{border-bottom:none;}
         </div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div id="agendaContent" style="overflow-x:auto"></div>
+        <div id="agendaContent" style="overflow-x:auto;touch-action:pan-x"></div>
       </div>
     </div>
 
@@ -437,8 +437,8 @@ tbody tr:last-child td{border-bottom:none;}
 // ══════════════════════════════════════════════════════════════
 // CONFIGURACIÓN SUPABASE — reemplazar con tus valores reales
 // ══════════════════════════════════════════════════════════════
-const SUPA_URL='https://tgwhegmgchnttsmrhcfc.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnd2hlZ21nY2hudHRzbXJoY2ZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4ODg1ODgsImV4cCI6MjA4OTQ2NDU4OH0.3g20p6yGber_j6HNB5oQqesOm_YgQ_fo9P2Yl2jGPbM';
+const SUPA_URL='https://tajos-srl.tailfea281.ts.net';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg4Nzg2NjUyLCJleHAiOjIxMDQxNDY2NTJ9.LYVLiVIkaalZysEjU55q9j8HWeQ_tWQfq6G4SzHmo54';
 
 const STORE_TABLE={
   barberos:'barberos',clientes:'clientes',servicios:'servicios',productos:'productos',
@@ -484,6 +484,8 @@ function fromDbObj(obj){
   const r={};
   for(const [k,v] of Object.entries(obj)){const ak=FIELD_FROM_DB[k]||k;r[ak]=v;}
   if(r.id!==undefined)r.id=Number(r.id);
+  const horaCols=['hora','horaInicio','hora_inicio','horaCierre','hora_cierre','desde','hasta'];
+  horaCols.forEach(col=>{ if(typeof r[col]==='string'&&r[col].length>5) r[col]=r[col].slice(0,5); });
   // Supabase puede devolver columnas JSONB como string — parsear si es necesario
   ['pagos','items','detalle','egresosEfectivo','egresos_efectivo','acceso'].forEach(col=>{
     if(typeof r[col]==='string'){try{r[col]=JSON.parse(r[col]);}catch(e){r[col]=[];}}
@@ -530,7 +532,7 @@ async function supaFetch(method,table,query,body,extraHeaders={}){
 
 // IndexedDB (cache local / fallback offline)
 let db;
-const DB_NAME='TajosOS',DB_VER=7;
+const DB_NAME='TajosOS',DB_VER=8;
 function initDB(){
   return new Promise((res,rej)=>{
     const r=indexedDB.open(DB_NAME,DB_VER);
@@ -552,32 +554,38 @@ const _idbDel=(s,id)=>new Promise((res,rej)=>{const r=db.transaction(s,'readwrit
 async function _idbReplaceAll(store,rows){
   const existing=await _idbAll(store);
   for(const item of existing)await _idbDel(store,item.id);
-  for(const item of rows){const copy={...item};if(!copy.id)delete copy.id;await _idbAdd(store,copy);}
+  for(const item of rows){const copy={...item};if(!copy.id)delete copy.id;await _idbPut(store,copy);}
 }
 
 // Capa hibrida publica
+const _TABLE_INFLIGHT={}; // store -> Promise en curso (dedup de llamadas concurrentes)
 async function dbAll(store){
   const tbl=STORE_TABLE[store]||store;
-  if(_online){
-    try{
-      const PAGE=1000;
-      let all=[];
-      let offset=0;
-      while(true){
-        const from=offset;
-        const to=offset+PAGE-1;
-        const rows=await supaFetch('GET',tbl,'select=*&order=id.asc',null,{'Range':`${from}-${to}`,'Range-Unit':'items'});
-        if(!rows||rows.length===0) break;
-        all=all.concat(rows);
-        if(rows.length<PAGE) break;
-        offset+=PAGE;
-      }
-      const mapped=all.map(fromDbObj);
-      await _idbReplaceAll(store,mapped);
-      return mapped;
-    }catch(e){console.warn('dbAll fallback:',e);}
-  }
-  return _idbAll(store);
+  if(_TABLE_INFLIGHT[store])return _TABLE_INFLIGHT[store];
+  const p=(async()=>{
+    if(_online){
+      try{
+        const PAGE=1000;
+        let all=[];
+        let offset=0;
+        while(true){
+          const from=offset;
+          const to=offset+PAGE-1;
+          const rows=await supaFetch('GET',tbl,'select=*&order=id.asc',null,{'Range':`${from}-${to}`,'Range-Unit':'items'});
+          if(!rows||rows.length===0) break;
+          all=all.concat(rows);
+          if(rows.length<PAGE) break;
+          offset+=PAGE;
+        }
+        const mapped=all.map(fromDbObj);
+        await _idbReplaceAll(store,mapped);
+        return mapped;
+      }catch(e){console.warn('dbAll fallback:',e);}
+    }
+    return _idbAll(store);
+  })();
+  _TABLE_INFLIGHT[store]=p;
+  try{ return await p; } finally { delete _TABLE_INFLIGHT[store]; }
 }
 async function dbGet(store,id){
   const tbl=STORE_TABLE[store]||store;
@@ -775,7 +783,7 @@ function navigate(page){
   const tab=document.querySelector(`.nav-tab[data-page="${page}"]`);if(tab)tab.classList.add('active');
   if(page==='agenda')renderAgenda();
   if(page==='servicios'){document.getElementById('servFechaFiltro').value=hoy();renderServicios();}
-  if(page==='reportes'){setPeriodo('dia',document.querySelector('.period-tab'));renderReportes();}
+  if(page==='reportes'){setPeriodo('dia',document.querySelector('.period-tab'));}
   if(page==='adelantos')renderAdelantos();
 }
 
@@ -942,7 +950,7 @@ async function renderAgenda(){
       html+=`</div>`;
     });
     html+=`</div>`;
-    document.getElementById('agendaContent').innerHTML=`<div style="overflow-x:auto">${html}</div>`;
+    document.getElementById('agendaContent').innerHTML=`<div style="overflow-x:auto;touch-action:pan-x">${html}</div>`;
   }
 }
 
